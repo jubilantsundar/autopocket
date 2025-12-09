@@ -4,8 +4,8 @@ Thank you for your interest in contributing to AutoPocket! This document provide
 
 ## Ways to Contribute
 
-- 🐛 **Report bugs** via [GitHub Issues](https://github.com/YOUR_USERNAME/autopocket/issues)
-- 💡 **Suggest features** via [GitHub Issues](https://github.com/YOUR_USERNAME/autopocket/issues)
+- 🐛 **Report bugs** via [GitHub Issues](https://github.com/Jubilantsundar/autopocket/issues)
+- 💡 **Suggest features** via [GitHub Issues](https://github.com/Jubilantsundar/autopocket/issues)
 - 📝 **Improve documentation**
 - 🧪 **Add tests**
 - 💻 **Submit code**
@@ -20,7 +20,7 @@ git clone https://github.com/YOUR_USERNAME/autopocket.git
 cd autopocket
 
 # Add upstream remote
-git remote add upstream https://github.com/ORIGINAL_OWNER/autopocket.git
+git remote add upstream https://github.com/Jubilantsundar/autopocket.git
 ```
 
 ### 2. Set Up Development Environment
@@ -200,8 +200,8 @@ When reviewing others' PRs:
 
 ## Questions?
 
-- Open a [Discussion](https://github.com/YOUR_USERNAME/autopocket/discussions)
-- Email: your.email@example.com
+- Open a [Discussion](https://github.com/Jubilantsundar/autopocket/discussions)
+- Email: jubilantsundar@gmail.com
 
 ---
 

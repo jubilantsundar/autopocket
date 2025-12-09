@@ -147,7 +147,8 @@ class SARData:
     compound_id: str
     smiles: str
     activity: float
-    predicted_affinity: Optional[float] = None
+    predicted_affinity: Optional[float] = None  # Primary metric for backward compatibility
+    predicted_metrics: Optional[Dict[str, float]] = None  # All available metrics
 
 
 class Boltz2SARIterator:
@@ -167,7 +168,9 @@ class Boltz2SARIterator:
         protein_sequence: str,
         csv_path: str,
         output_dir: str = "./boltz2_sar_output",
-        target_r2: float = 0.7,
+        target_r2: Optional[float] = None,
+        target_spearman: Optional[float] = None,
+        target_roc_auc: Optional[float] = None,
         max_iterations: int = 10,
         use_msa_server: bool = True,
         msa_path: Optional[str] = None,
@@ -188,7 +191,9 @@ class Boltz2SARIterator:
             protein_sequence: Protein amino acid sequence
             csv_path: Path to CSV file with SMILES and Activity columns
             output_dir: Directory for outputs and intermediate files
-            target_r2: Target R² value for convergence (uses combined metric: max of R² and Spearman²)
+            target_r2: Target R² threshold (converges if any metric's R² >= this). Default: 0.6
+            target_spearman: Target Spearman R threshold (converges if any metric >= this). Default: 0.7
+            target_roc_auc: Target ROC-AUC threshold (converges if any metric >= this). Default: 0.8
             max_iterations: Maximum number of iterations
             use_msa_server: Whether to use MSA server for alignments
             msa_path: Optional path to pre-computed MSA file (.a3m)
@@ -205,7 +210,12 @@ class Boltz2SARIterator:
         self.protein_sequence = protein_sequence
         self.csv_path = csv_path
         self.output_dir = Path(output_dir)
-        self.target_r2 = target_r2
+
+        # Set default thresholds if not provided
+        self.target_r2 = target_r2 if target_r2 is not None else 0.6
+        self.target_spearman = target_spearman if target_spearman is not None else 0.7
+        self.target_roc_auc = target_roc_auc if target_roc_auc is not None else 0.8
+
         self.max_iterations = max_iterations
         self.use_msa_server = use_msa_server
         self.msa_path = msa_path
@@ -250,7 +260,10 @@ class Boltz2SARIterator:
 
         self.logger.info(f"Initialized Boltz-2 SAR Iterator")
         self.logger.info(f"Output directory: {self.output_dir}")
-        self.logger.info(f"Target R²: {self.target_r2}")
+        self.logger.info(f"Convergence thresholds (any one triggers stop):")
+        self.logger.info(f"  - R² >= {self.target_r2}")
+        self.logger.info(f"  - Spearman R >= {self.target_spearman}")
+        self.logger.info(f"  - ROC-AUC >= {self.target_roc_auc}")
         self.logger.info(f"Max iterations: {self.max_iterations}")
         self.logger.info(f"Protein chain: {self.protein_chain_id}, Ligand chain: {self.ligand_chain_id}")
         if self.pocket_residues:
@@ -465,16 +478,16 @@ class Boltz2SARIterator:
             self.logger.error(f"Error running prediction: {e}")
             return False
 
-    def extract_affinity(self, compound: SARData, iteration: int) -> Optional[float]:
+    def extract_affinity(self, compound: SARData, iteration: int) -> Optional[Dict[str, float]]:
         """
-        Extract predicted affinity from Boltz-2 output files.
+        Extract all predicted affinity metrics from Boltz-2 output files.
 
         Args:
             compound: SARData object
             iteration: Current iteration number
 
         Returns:
-            Predicted affinity value or None if extraction failed
+            Dictionary with all affinity metrics or None if extraction failed
         """
         # Boltz-2 creates nested output directory structure:
         # predictions/boltz_results_<yaml_name>/predictions/<yaml_name>/
@@ -510,14 +523,42 @@ class Boltz2SARIterator:
             with open(affinity_file, 'r') as f:
                 affinity_data = json.load(f)
 
-            # Extract affinity_pred_value (log10(IC50) in μM)
+            # Extract all available metrics
+            metrics = {}
+
+            # Main predictions
             if 'affinity_pred_value' in affinity_data:
-                affinity = float(affinity_data['affinity_pred_value'])
-                self.logger.debug(f"Extracted affinity: {affinity}")
-                return affinity
-            else:
-                self.logger.warning(f"affinity_pred_value not found in {affinity_file}")
+                metrics['affinity_value'] = float(affinity_data['affinity_pred_value'])
+            if 'affinity_probability_binary' in affinity_data:
+                metrics['probability_binary'] = float(affinity_data['affinity_probability_binary'])
+
+            # Ensemble predictions
+            ensemble_values = []
+            ensemble_probs = []
+
+            for i in range(1, 10):  # Check for up to 9 ensemble members
+                value_key = f'affinity_pred_value{i}'
+                prob_key = f'affinity_probability_binary{i}'
+
+                if value_key in affinity_data:
+                    ensemble_values.append(float(affinity_data[value_key]))
+                if prob_key in affinity_data:
+                    ensemble_probs.append(float(affinity_data[prob_key]))
+
+            # Calculate ensemble means if available
+            if ensemble_values:
+                metrics['ensemble_value_mean'] = np.mean(ensemble_values)
+                metrics['ensemble_value_std'] = np.std(ensemble_values)
+            if ensemble_probs:
+                metrics['ensemble_prob_mean'] = np.mean(ensemble_probs)
+                metrics['ensemble_prob_std'] = np.std(ensemble_probs)
+
+            if not metrics:
+                self.logger.warning(f"No affinity metrics found in {affinity_file}")
                 return None
+
+            self.logger.debug(f"Extracted metrics: {metrics}")
+            return metrics
 
         except Exception as e:
             self.logger.error(f"Error reading affinity file: {e}")
@@ -552,19 +593,13 @@ class Boltz2SARIterator:
             self.logger.warning("Not enough data points for correlation calculation")
             return {'r2': 0.0, 'spearman': 0.0, 'pearson': 0.0, 'combined': 0.0, 'roc_auc': 0.0}
 
-        # Calculate R² (coefficient of determination)
-        ss_res = np.sum((exp_array - pred_array) ** 2)
-        ss_tot = np.sum((exp_array - np.mean(exp_array)) ** 2)
-
-        if ss_tot == 0:
-            r2 = 0.0
-        else:
-            r2 = 1 - (ss_res / ss_tot)
-
         # Calculate Pearson correlation (linear)
         pearson_r = np.corrcoef(exp_array, pred_array)[0, 1]
         if np.isnan(pearson_r):
             pearson_r = 0.0
+
+        # Calculate R² (Pearson²) - coefficient of determination for correlation
+        r2 = pearson_r ** 2
 
         # Calculate Spearman correlation (rank-based, better for monotonic relationships)
         spearman_r, _ = spearmanr(exp_array, pred_array)
@@ -616,7 +651,7 @@ class Boltz2SARIterator:
         metrics = self.calculate_correlation_metrics(experimental, predicted)
         return metrics['combined']
 
-    def run_iteration(self, iteration: int) -> Tuple[float, int, int]:
+    def run_iteration(self, iteration: int) -> Tuple[float, int, int, Dict[str, Dict[str, float]]]:
         """
         Run a single iteration of Boltz-2 predictions for all compounds.
 
@@ -624,7 +659,7 @@ class Boltz2SARIterator:
             iteration: Current iteration number
 
         Returns:
-            Tuple of (R² value, successful predictions, failed predictions)
+            Tuple of (combined metric, successful predictions, failed predictions, all metric correlations)
         """
         self.logger.info(f"\n{'='*60}")
         self.logger.info(f"Starting Iteration {iteration}")
@@ -641,33 +676,76 @@ class Boltz2SARIterator:
 
             # Run prediction
             if self.run_boltz_prediction(yaml_path, iteration):
-                # Extract affinity
-                affinity = self.extract_affinity(compound, iteration)
-                if affinity is not None:
-                    compound.predicted_affinity = affinity
+                # Extract all affinity metrics
+                metrics_dict = self.extract_affinity(compound, iteration)
+                if metrics_dict is not None:
+                    compound.predicted_metrics = metrics_dict
+                    # Use affinity_value as primary metric for backward compatibility
+                    compound.predicted_affinity = metrics_dict.get('affinity_value', None)
                     successful += 1
                 else:
                     failed += 1
             else:
                 failed += 1
 
-        # Calculate correlation metrics
-        experimental = [c.activity for c in self.sar_data if c.predicted_affinity is not None]
-        predicted = [c.predicted_affinity for c in self.sar_data if c.predicted_affinity is not None]
+        # Calculate correlations for all available metrics
+        experimental = [c.activity for c in self.sar_data if c.predicted_metrics is not None]
 
-        if len(predicted) > 0:
-            metrics = self.calculate_correlation_metrics(experimental, predicted, self.roc_threshold)
-        else:
-            metrics = {'r2': 0.0, 'spearman': 0.0, 'pearson': 0.0, 'combined': 0.0, 'roc_auc': 0.0}
+        # Collect all metric types available
+        all_metric_names = set()
+        for c in self.sar_data:
+            if c.predicted_metrics:
+                all_metric_names.update(c.predicted_metrics.keys())
+
+        # Calculate correlations for each metric type
+        metric_correlations = {}
+        best_combined = 0.0
+        best_metric_name = None
 
         self.logger.info(f"\nIteration {iteration} Summary:")
         self.logger.info(f"  Successful predictions: {successful}")
         self.logger.info(f"  Failed predictions: {failed}")
-        self.logger.info(f"  R² (Pearson²): {metrics['r2']:.4f}")
-        self.logger.info(f"  Spearman R: {metrics['spearman']:.4f}")
-        self.logger.info(f"  Combined metric: {metrics['combined']:.4f}")
-        if self.roc_threshold is not None:
-            self.logger.info(f"  ROC-AUC (threshold={self.roc_threshold}): {metrics['roc_auc']:.4f}")
+
+        if len(experimental) > 0:
+            self.logger.info(f"\nCorrelations for each metric:")
+
+            for metric_name in sorted(all_metric_names):
+                # Get predictions for this metric (only for compounds that have it)
+                predicted = []
+                exp_subset = []
+                for c in self.sar_data:
+                    if c.predicted_metrics and metric_name in c.predicted_metrics:
+                        predicted.append(c.predicted_metrics[metric_name])
+                        exp_subset.append(c.activity)
+
+                if len(predicted) >= 2:
+                    corr_metrics = self.calculate_correlation_metrics(exp_subset, predicted, self.roc_threshold)
+                    metric_correlations[metric_name] = corr_metrics
+
+                    self.logger.info(f"\n  {metric_name}:")
+                    self.logger.info(f"    R² (Pearson²): {corr_metrics['r2']:.4f}")
+                    self.logger.info(f"    Spearman R: {corr_metrics['spearman']:.4f}")
+                    self.logger.info(f"    Combined: {corr_metrics['combined']:.4f}")
+                    if self.roc_threshold is not None and corr_metrics['roc_auc'] > 0:
+                        self.logger.info(f"    ROC-AUC: {corr_metrics['roc_auc']:.4f}")
+
+                    # Track best metric
+                    if corr_metrics['combined'] > best_combined:
+                        best_combined = corr_metrics['combined']
+                        best_metric_name = metric_name
+
+            if best_metric_name:
+                self.logger.info(f"\n  ✓ Best metric: {best_metric_name} (Combined={best_combined:.4f})")
+
+        # Use best metric's combined score for convergence, or fallback to affinity_value
+        if best_metric_name and best_metric_name in metric_correlations:
+            metrics = metric_correlations[best_metric_name]
+        elif 'affinity_value' in metric_correlations:
+            metrics = metric_correlations['affinity_value']
+            best_metric_name = 'affinity_value'
+        else:
+            metrics = {'r2': 0.0, 'spearman': 0.0, 'pearson': 0.0, 'combined': 0.0, 'roc_auc': 0.0}
+            best_metric_name = 'none'
 
         # Store iteration results
         iteration_data = {
@@ -676,6 +754,8 @@ class Boltz2SARIterator:
             'spearman': metrics['spearman'],
             'pearson': metrics['pearson'],
             'combined': metrics['combined'],
+            'best_metric': best_metric_name,
+            'all_metrics': metric_correlations,  # Store correlations for all metrics
             'successful': successful,
             'failed': failed,
             'timestamp': datetime.now().isoformat()
@@ -686,7 +766,32 @@ class Boltz2SARIterator:
 
         self.iteration_results.append(iteration_data)
 
-        return metrics['combined'], successful, failed
+        return metrics['combined'], successful, failed, metric_correlations
+
+    def check_convergence(self, metric_correlations: Dict[str, Dict[str, float]]) -> Tuple[bool, Optional[str], Optional[str]]:
+        """
+        Check if any metric meets any convergence threshold.
+
+        Args:
+            metric_correlations: Dictionary mapping metric names to their correlation results
+
+        Returns:
+            Tuple of (converged, metric_name, threshold_name)
+        """
+        for metric_name, corr_metrics in metric_correlations.items():
+            # Check R² threshold
+            if corr_metrics['r2'] >= self.target_r2:
+                return True, metric_name, f"R² >= {self.target_r2}"
+
+            # Check Spearman threshold
+            if abs(corr_metrics['spearman']) >= self.target_spearman:
+                return True, metric_name, f"Spearman R >= {self.target_spearman}"
+
+            # Check ROC-AUC threshold (if ROC was calculated)
+            if corr_metrics.get('roc_auc', 0) >= self.target_roc_auc:
+                return True, metric_name, f"ROC-AUC >= {self.target_roc_auc}"
+
+        return False, None, None
 
     def run(self) -> Dict:
         """
@@ -705,15 +810,28 @@ class Boltz2SARIterator:
         # Run iterations
         converged = False
         final_r2 = 0.0
+        convergence_metric = None
+        convergence_threshold = None
 
         for iteration in range(1, self.max_iterations + 1):
-            r2, successful, failed = self.run_iteration(iteration)
+            r2, successful, failed, metric_correlations = self.run_iteration(iteration)
             final_r2 = r2
 
-            # Check convergence
-            if r2 >= self.target_r2:
-                self.logger.info(f"\nConverged! R² = {r2:.4f} >= target {self.target_r2}")
-                converged = True
+            # Check if any metric meets any threshold
+            converged, conv_metric_name, conv_threshold = self.check_convergence(metric_correlations)
+
+            if converged:
+                convergence_metric = conv_metric_name
+                convergence_threshold = conv_threshold
+                self.logger.info(f"\n{'='*60}")
+                self.logger.info(f"✓ CONVERGED!")
+                self.logger.info(f"  Metric: {conv_metric_name}")
+                self.logger.info(f"  Threshold: {conv_threshold}")
+                self.logger.info(f"  Value: R²={metric_correlations[conv_metric_name]['r2']:.4f}, "
+                               f"Spearman={metric_correlations[conv_metric_name]['spearman']:.4f}")
+                if metric_correlations[conv_metric_name].get('roc_auc', 0) > 0:
+                    self.logger.info(f"  ROC-AUC: {metric_correlations[conv_metric_name]['roc_auc']:.4f}")
+                self.logger.info(f"{'='*60}")
                 break
 
         # Generate final report
@@ -890,8 +1008,20 @@ CSV file should contain at minimum:
     parser.add_argument(
         '--target-r2',
         type=float,
-        default=0.7,
-        help='Target R² value for convergence (default: 0.7)'
+        default=None,
+        help='Target R² threshold - converges if any metric R² >= this (default: 0.6)'
+    )
+    parser.add_argument(
+        '--target-spearman',
+        type=float,
+        default=None,
+        help='Target Spearman R threshold - converges if any metric |Spearman| >= this (default: 0.7)'
+    )
+    parser.add_argument(
+        '--target-roc-auc',
+        type=float,
+        default=None,
+        help='Target ROC-AUC threshold - converges if any metric ROC-AUC >= this (default: 0.8)'
     )
     parser.add_argument(
         '--max-iterations',
@@ -1016,7 +1146,9 @@ CSV file should contain at minimum:
         protein_sequence=protein_sequence,
         csv_path=csv_path,
         output_dir=output_dir,
-        target_r2=target_r2,
+        target_r2=config.get('target_r2') if config else args.target_r2,
+        target_spearman=config.get('target_spearman') if config else args.target_spearman,
+        target_roc_auc=config.get('target_roc_auc') if config else args.target_roc_auc,
         max_iterations=max_iterations,
         use_msa_server=use_msa_server,
         msa_path=msa_path,
