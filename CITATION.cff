@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: "If you use AutoPocket in your research, please cite it as below."
+title: "AutoPocket: Automated Binding Pocket Discovery for SAR-Driven Drug Design"
+authors:
+  - family-names: "Your Last Name"
+    given-names: "Your First Name"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+    email: "your.email@example.com"
+    affiliation: "Your Institution"
+version: 1.0.0
+date-released: "2024-12-09"
+repository-code: "https://github.com/YOUR_USERNAME/autopocket"
+url: "https://github.com/YOUR_USERNAME/autopocket"
+keywords:
+  - drug-discovery
+  - protein-ligand-binding
+  - binding-pocket
+  - structure-prediction
+  - artificial-intelligence
+  - SAR
+  - cofolding
+  - Boltz-2
+license: MIT
+abstract: >
+  AutoPocket is an AI-powered tool that automat ically discovers binding pockets
+  that explain structure-activity relationship (SAR) data. It bridges the gap between
+  ligand-based and structure-based drug design by using Boltz-2 generative AI to
+  predict protein-ligand cofolding without requiring prior knowledge of the binding pocket.
+  The tool iteratively refines predictions to maximize correlation with experimental
+  activity data, enabling structure-based design even when pocket information is unknown.
+references:
+  - type: software
+    authors:
+      - family-names: "Wohlwend"
+        given-names: "Jeremy"
+      - name: "Boltz-2 Team"
+    title: "Boltz-2: Accurate Biomolecular Structure Prediction"
+    year: 2024
+    url: "https://github.com/jwohlwend/boltz"

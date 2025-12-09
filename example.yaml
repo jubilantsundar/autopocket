@@ -1,0 +1,34 @@
+version: 1  # Optional, defaults to 1
+sequences:
+  - protein:
+      id: A
+      sequence: STNPPPPETSNPNKPKRQTNQLQYLLRVVLKTLWKHQFAWPFQQPVDAVKLNLPDYYKIIKTPMDMGTIKKRLENNYYWNAQECIQDFNTMFTNCYIYNKPGDDIVLMAEALEKLFLQKINELPTEETEIMIVQAKGRGRGRK
+      msa: empty
+  - protein:
+      id: B
+      sequence: STNPPPPETSNPNKPKRQTNQLQYLLRVVLKTLWKHQFAWPFQQPVDAVKLNLPDYYKIIKTPMDMGTIKKRLENNYYWNAQECIQDFNTMFTNCYIYNKPGDDIVLMAEALEKLFLQKINELPTEETEIMIVQAKGRGRGRK
+      msa: empty
+  - ligand:
+      id: L
+      smiles: 'CCS(c(cc1)cc(C(c2c3[nH]c(C(Nc(cc4)ccc4OCCOCCOCCOCCOCCOCCOCCOCCOCCOCCOCCOCCC(NCCCN(C)CCCNC(c4cc(NC(c5cc(NC(c6nc(NC([C@@H](CCNC(c7cc(NC(c8cc(NC(c9ncc[n]9C)=O)c[n]8C)=O)c[n]7C)=O)NC(COCCNC(c7cc(NC(c8cc(NC(c9nc(NC([C@@H](CCNC(c%10cc(NC(c%11nc(NC(c%12ncc[n]%12C)=O)c[n]%11C)=O)c[n]%10C)=O)N)=O)c[n]9C)=O)c[n]8C)=O)c[n]7C)=O)=O)=O)c[n]6C)=O)c[n]5C)=O)c[n]4C)=O)=O)=O)c2)=CN(C)C3=O)c1Oc1c(C)cccc1C)(=O)=O'
+properties:
+  - affinity:
+      binder: L
+constraints:
+  - pocket:
+      binder: L
+      contacts: [ [ A, 107 ], [ B, 98 ] ]
+  - contact:
+      token1: [B, 20]
+      token2: [A, 27]
+      max_distance: 5.0
+      force: true
+  - contact:
+      token1: [B, 21]
+      token2: [A, 31]
+      max_distance: 5.0
+      force: true
+templates:
+  - cif: template.cif
+    force: true
+    threshold: 2

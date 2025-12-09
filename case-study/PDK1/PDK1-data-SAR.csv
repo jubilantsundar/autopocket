@@ -1,0 +1,8 @@
+SMILES,ID,IC50_nM
+Nc1nc(-c2ccc3c(N)n[nH]c3c2)ccn1,50628047,370
+Nc1n[nH]c2cc(-c3ncncc3)ccc12,50628048,2670
+Nc1nccc(-c2ccc3c(N)n[nH]c3c2)c1,50628049,7280
+Nc1nc(-c2ccc3c(N)n[nH]c3c2)ccc1,50628050,13600
+Nc1n[nH]c2cc(-c3ccncc3)ccc12,50628053,13200
+Nc1cc(-c2ccc3c(N)n[nH]c3c2)ccc1,50628051,21200
+Nc1n[nH]c2cc(-c3ncccc3)ccc12,50628052,25100

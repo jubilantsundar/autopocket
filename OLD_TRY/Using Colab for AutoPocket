@@ -1,0 +1,7 @@
+Using Colab for AutoPocket
+
+1. Use separate Colab Notebooks for each programs. Save them in Google Drive. You have to install all required dependencies.
+
+2. DiffDock is notorious for installing. It needs conda. 
+
+3. Reinvent4 also needs to be installed via Conda

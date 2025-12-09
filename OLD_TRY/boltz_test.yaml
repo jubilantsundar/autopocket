@@ -1,0 +1,7 @@
+sequences:
+  - protein:
+      id: protein_A
+      sequence: MKKYTCTVCGYIYNPEDG
+  - smiles:
+      id: ligand_1
+      smiles: CC(=O)OC1=CC=CC=C1C(=O)O

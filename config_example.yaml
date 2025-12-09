@@ -1,0 +1,52 @@
+## Boltz-2 SAR Iterator Configuration File
+## This file demonstrates all available configuration options
+
+# Required: Protein amino acid sequence
+protein_sequence: "STNPPPPETSNPNKPKRQTNQLQYLLRVVLKTLWKHQFAWPFQQPVDAVKLNLPDYYKIIKTPMDMGTIKKRLENNYYWNAQECIQDFNTMFTNCYIYNKPGDDIVLMAEALEKLFLQKINELPTEETEIMIVQAKGRGRGRK"
+
+# Required: Path to CSV file with SAR data (SMILES and Activity columns)
+csv_path: "example_compounds.csv"
+
+# Optional: Output directory
+output_dir: "./boltz2_sar_output"
+
+# Optional: Target R² for convergence (default: 0.7)
+target_r2: 0.7
+
+# Optional: Maximum number of iterations (default: 10)
+max_iterations: 10
+
+# Optional: Use MSA server for alignment generation (default: true)
+use_msa_server: false
+
+# Optional: Path to pre-computed MSA file (.a3m format)
+# If use_msa_server is false, this should be provided
+msa_path: null  # Set to path like "./protein_msa.a3m" if available
+
+# Optional: Chain IDs
+protein_chain_id: "A"
+ligand_chain_id: "L"
+
+# Optional: Pocket residues defining the binding pocket
+# Format: List of [chain, residue_number] pairs
+pocket_residues:
+  - ["A", 107]
+  - ["A", 98]
+  # Add more residues as needed
+
+# Optional: Contact constraints between residues
+# Format: List of [[chain1, res1], [chain2, res2], max_distance] triplets
+contact_residues:
+  - [["A", 20], ["B", 27], 5.0]
+  - [["A", 21], ["B", 31], 5.0]
+  # Add more contacts as needed
+
+# Optional: Template structure file (CIF format)
+template_file: null  # Set to path like "./template.cif" if available
+
+# Optional: Template options
+template_force: true      # Force use of template
+template_threshold: 2     # Template threshold value
+
+# Optional: Logging level (DEBUG, INFO, WARNING, ERROR)
+log_level: "INFO"

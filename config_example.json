@@ -1,0 +1,23 @@
+{
+  "protein_sequence": "STNPPPPETSNPNKPKRQTNQLQYLLRVVLKTLWKHQFAWPFQQPVDAVKLNLPDYYKIIKTPMDMGTIKKRLENNYYWNAQECIQDFNTMFTNCYIYNKPGDDIVLMAEALEKLFLQKINELPTEETEIMIVQAKGRGRGRK",
+  "csv_path": "example_compounds.csv",
+  "output_dir": "./boltz2_sar_output",
+  "target_r2": 0.7,
+  "max_iterations": 10,
+  "use_msa_server": false,
+  "msa_path": null,
+  "protein_chain_id": "A",
+  "ligand_chain_id": "L",
+  "pocket_residues": [
+    ["A", 107],
+    ["A", 98]
+  ],
+  "contact_residues": [
+    [["A", 20], ["B", 27], 5.0],
+    [["A", 21], ["B", 31], 5.0]
+  ],
+  "template_file": null,
+  "template_force": true,
+  "template_threshold": 2,
+  "log_level": "INFO"
+}
