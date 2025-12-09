@@ -1,4 +1,0 @@
-smiles,activity,compound_id
-Fc1ccc(Nc2ncnc3cc(OCCCN4CCOCC4)c(NC(=O)C=C)cc23)cc1Cl,0.13,test_1
-CCOc1cc2c(cc1NC(=O)/C=C/CN(C)C)c(c(cn2)C#N)Nc3ccc(c(c3)Cl)F,0.24,test_2
-COCCOc1cc2ncnc(Nc3cccc(c3)C#C)c2cc1OCCOC,0.47,test_3

@@ -1,6 +1,0 @@
-smiles,activity,compound_id
-CC1(C)CNc2cc(NC(=O)c3cccnc3NCc3ccncc3)ccc12,15.0,65375
-CO[C@H]1[C@H](C[C@@H]2O[C@@]1(C)n1c3ccccc3c3c4CNC(=O)c4c4c5ccccc5n2c4c13)N(C)C(=O)c1ccccc1,620.0,65423
-Fc1ccc(Nc2ncnc3cc(OCCCN4CCOCC4)c(NC(=O)C=C)cc23)cc1Cl,0.13,58139
-Cc1ccc(cc1)-n1nc(cc1NC(=O)Nc1ccc(OCCN2CCOCC2)c2ccccc12)C(C)(C)C,5300.0,65412
-CCN(CCCOc1ccc2c(c1)ncnc2Nc3cc(n[nH]3)CC(=O)Nc4cccc(c4)F)CCO,120.0,58137
