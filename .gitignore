@@ -169,3 +169,14 @@ $RECYCLE.BIN/
 case-study/*/boltz2_pdk1_sar_output/
 case-study/*/predictions/
 case-study/*/*.log
+
+# Old development/testing files
+OLD_TRY/
+
+# Source data files (papers, raw data)
+case-study/articles-data/
+case-study/ALK/
+
+# Database files
+*.mdb
+*.db
